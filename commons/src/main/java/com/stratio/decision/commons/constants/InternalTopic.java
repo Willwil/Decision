@@ -18,7 +18,7 @@ package com.stratio.decision.commons.constants;
 public enum InternalTopic {
 
     TOPIC_REQUEST("stratio_decision_requests"), TOPIC_DATA("stratio_decision_data"), TOPIC_ACTION(
-            "stratio_decision_action");
+            "stratio_decision_action"), TOPIC_PARTITIONED_DATA_SUFFIX("partition_");
 
 
     private final String topicName;

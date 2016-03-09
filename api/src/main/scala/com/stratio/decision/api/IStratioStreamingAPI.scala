@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -90,6 +90,13 @@ trait IStratioStreamingAPI {
                         zookeeperHost: String,
                         zookeeperPort: Int): IStratioStreamingAPI
 
+
+  /**
+    * If Decision is up but some of the nodes (group) of the cluster are down, we can continue inserting data
+    * in kafka data topics
+    */
+  def insertWithGroupDown() : IStratioStreamingAPI
+
   /**
    * When server configuration is added, call this method to try to connect
    * to streaming engine async.
@@ -150,6 +157,11 @@ trait IStratioStreamingAPI {
   @throws(classOf[StratioEngineStatusException])
   @throws(classOf[StratioAPISecurityException])
   def insertData(streamName: String, data: List[ColumnNameValue])
+
+
+  @throws(classOf[StratioEngineStatusException])
+  @throws(classOf[StratioAPISecurityException])
+  def insertDataWithPartition(streamName: String, data: List[ColumnNameValue], keys: List[ColumnNameValue])
 
 
   /**

@@ -1,12 +1,12 @@
 /**
  * Copyright (C) 2014 Stratio (http://stratio.com)
- * <p/>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,6 +30,7 @@ import com.stratio.decision.commons.constants.InternalTopic;
 import com.stratio.decision.drools.configuration.DroolsConfigurationBean;
 import com.stratio.decision.drools.configuration.DroolsConfigurationGroupBean;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 
 public class ConfigurationContext {
@@ -68,6 +69,7 @@ public class ConfigurationContext {
     private final List<String> clusterGroups;
     private final boolean allAckEnabled;
     private final int ackTimeout;
+    private final boolean partitionsEnabled;
 
     /**
      * OPTIONAL PROPERTIES *
@@ -129,8 +131,10 @@ public class ConfigurationContext {
         CLUSTERING_GROUPS("clustering.clusterGroups"),
         CLUSTERING_ALL_ACK_ENABLED("clustering.allAckEnabled"),
         CLUSTERING_ACK_TIMEOUT("clustering.ackTimeout"),
+        CLUSTERING_PARTITIONS_ENABLED("clustering.partitionsEnabled"),
 
         // Drools Config
+        DROOLS_ENABLED("drools.enabled"),
         DROOLS_GROUP("drools.groups"),
         DROOLS_GROUP_NAME("name"),
         DROOLS_GROUP_SESSION("sessionName"),
@@ -162,24 +166,6 @@ public class ConfigurationContext {
         this.kafkaHosts = config.getStringList(ConfigurationKeys.KAFKA_HOSTS.getKey());
         this.kafkaConsumerBrokerHost = kafkaHosts.get(0).split(":")[0];
         this.kafkaConsumerBrokerPort = Integer.parseInt(kafkaHosts.get(0).split(":")[1]);
-
-        List<String> dataTopics = (List<String>) this.getListOrNull(ConfigurationKeys.DATA_TOPICS.getKey(),
-                config);
-
-        if (dataTopics != null) {
-
-            String separator = "_";
-
-            this.dataTopics = dataTopics.stream().map(topic -> InternalTopic.TOPIC_DATA.getTopicName().concat
-                    (separator).concat(topic))
-            .collect(Collectors.toList());
-
-        } else {
-            dataTopics = new ArrayList<>();
-            dataTopics.add(InternalTopic.TOPIC_DATA.getTopicName());
-            this.dataTopics = dataTopics;
-        }
-
 
         this.zookeeperHosts = config.getStringList(ConfigurationKeys.ZOOKEEPER_HOSTS.getKey());
         this.sparkHost = config.getString(ConfigurationKeys.SPARK_HOST.getKey());
@@ -232,10 +218,39 @@ public class ConfigurationContext {
         this.allAckEnabled = config.getBoolean(ConfigurationKeys.CLUSTERING_ALL_ACK_ENABLED.getKey());
         this.ackTimeout = config.getInt(ConfigurationKeys.CLUSTERING_ACK_TIMEOUT.getKey());
         this.clusteringEnabled = config.getBoolean(ConfigurationKeys.CLUSTERING_ENABLED.getKey());
+        this.partitionsEnabled = config.getBoolean(ConfigurationKeys.CLUSTERING_PARTITIONS_ENABLED.getKey());
+
+
+        String separator = "_";
+
+        List<String> dataTopics = (List<String>) this.getListOrNull(ConfigurationKeys.DATA_TOPICS.getKey(),
+                config);
+
+        if (dataTopics != null) {
+
+            this.dataTopics = dataTopics.stream().map(topic -> InternalTopic.TOPIC_DATA.getTopicName().concat
+                    (separator).concat(topic))
+                    .collect(Collectors.toList());
+
+        } else {
+            dataTopics = new ArrayList<>();
+            dataTopics.add(InternalTopic.TOPIC_DATA.getTopicName());
+            this.dataTopics = dataTopics;
+        }
+
+        if (clusteringEnabled && partitionsEnabled){
+
+            Integer partitionNumber = clusterGroups.indexOf(groupId);
+            this.dataTopics.add(InternalTopic.TOPIC_DATA.getTopicName().concat(separator).concat(InternalTopic
+                    .TOPIC_PARTITIONED_DATA_SUFFIX.getTopicName())
+                    .concat(partitionNumber.toString()));
+
+        }
 
         this.droolsConfiguration = new DroolsConfigurationBean();
         Config droolsGroupsConfig = ConfigFactory.load("drools");
         droolsConfiguration.setGroups(getDroolsConfigurationGroup(droolsGroupsConfig));
+        droolsConfiguration.setIsEnabled(this.getBoolean(ConfigurationKeys.DROOLS_ENABLED.getKey(), droolsGroupsConfig));
 
     }
 
@@ -444,11 +459,25 @@ public class ConfigurationContext {
         return mongoMaxBatchSize;
     }
 
+    public boolean isPartitionsEnabled() {
+        return partitionsEnabled;
+    }
+
     private Object getValueOrNull(String key, Config config) {
         if (config.hasPath(key)) {
             return config.getAnyRef(key);
         } else {
             return null;
+        }
+    }
+
+    private Boolean getBoolean(String key, Config config) {
+        try {
+            return config.getBoolean(key);
+        } catch (ConfigException.Missing ex)    {
+            return false;
+        } catch (Exception ex)  {
+            return false;
         }
     }
 

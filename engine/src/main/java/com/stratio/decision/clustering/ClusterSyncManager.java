@@ -1,3 +1,18 @@
+/**
+ * Copyright (C) 2014 Stratio (http://stratio.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.stratio.decision.clustering;
 
 import java.io.EOFException;
@@ -121,6 +136,7 @@ public class ClusterSyncManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
 
     }
 
@@ -316,12 +332,13 @@ public class ClusterSyncManager {
         switch (eventType){
 
             case CHILD_ADDED:
-                logger.info("STATUS - Group Initialized: {} ", nodeId);
+                logger.info("ClusterSyncManager Leader: {}. STATUS - Group Initialized: {} ", groupId, nodeId);
                 clusterNodesStatus.get(NODE_STATUS.INITIALIZED).add(nodeId);
                 clusterNodesStatus.get(NODE_STATUS.STOPPED).remove(nodeId);
                 break;
             case CHILD_REMOVED:
-                logger.error("***** STATUS - Group {} are notified as DOWN *****", nodeId);
+                logger.error("*****ClusterSyncManager Leader: {}.  STATUS - Group {} are notified as DOWN *****",
+                        groupId, nodeId);
                 clusterNodesStatus.get(NODE_STATUS.INITIALIZED).remove(nodeId);
                 clusterNodesStatus.get(NODE_STATUS.STOPPED).add(nodeId);
                 break;
@@ -338,12 +355,13 @@ public class ClusterSyncManager {
 
        if (clusterNodesStatus.get(NODE_STATUS.STOPPED).size() == 0){
             clusterStatus = STREAMING.ZK_EPHEMERAL_NODE_STATUS_INITIALIZED;
-            logger.info("STATUS - All groups Initialized");
+            logger.info("ClusterSyncManager Leader: {}. STATUS - All groups Initialized", groupId);
         }else {
             clusterStatus = STREAMING.ZK_EPHEMERAL_NODE_STATUS_GROUPS_DOWN;
-            logger.error("**** STATUS - Some groups are DOWN");
-            clusterNodesStatus.get(NODE_STATUS.STOPPED).forEach( node -> logger.error("**** STATUS - groupId: {} is "
-                    + "DOWN", node));
+            logger.error("****ClusterSyncManager Leader: {}.  STATUS - Some groups are DOWN",  groupId);
+            clusterNodesStatus.get(NODE_STATUS.STOPPED).forEach( node -> logger.error("ClusterSyncManager Leader: {}."
+                    + "  **** STATUS - groupId: {} is "
+                    + "DOWN", groupId, node));
 
         }
 
@@ -360,5 +378,9 @@ public class ClusterSyncManager {
 
     public CuratorFramework getClient() {
         return client;
+    }
+
+    public String getGroupId() {
+        return groupId;
     }
 }
